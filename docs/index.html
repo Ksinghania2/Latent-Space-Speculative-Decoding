@@ -1,0 +1,104 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Latent-Space Speculative Decoding — Interactive Lab</title>
+<style>
+:root{--bg:#0b0f17;--card:#131a26;--bd:#243049;--tx:#e6ebf5;--mu:#8b97b0;--g:#34d399;--r:#f87171;--b:#60a5fa;--y:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,Segoe UI,sans-serif}
+.w{max-width:1050px;margin:0 auto;padding:24px 16px 60px}h1{font-size:28px;margin:0 0 4px}h2{font-size:17px;margin:0 0 12px}
+.sub{color:var(--mu);margin-bottom:20px}.grid{display:grid;gap:14px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}.pipe span{background:#0e1523;border:1px solid var(--bd);border-radius:8px;padding:6px 10px}.pipe i{color:var(--mu);font-style:normal}
+.hl{border-color:var(--b)!important}
+label{display:block;font-size:13px;color:var(--mu);margin-top:8px}label b{color:var(--tx);float:right}input[type=range]{width:100%}
+.stream{min-height:96px;font-family:ui-monospace,Menlo,monospace;font-size:14px;line-height:1.9;word-break:break-word}
+.t{padding:1px 3px;margin:0 1px;border-radius:4px;background:#1b2538}.t.a{background:#064e3b;color:#a7f3d0}.t.f{background:#1e3a8a;color:#bfdbfe}
+.t.x{background:#7f1d1d;color:#fecaca;text-decoration:line-through}.t.p{background:#78350f;color:#fde68a}
+.big{font-size:26px;font-weight:700}.mu{color:var(--mu);font-size:13px}.ok{color:var(--g)}.bad{color:var(--r)}
+button{background:var(--b);color:#08111f;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;margin-right:6px}button.s{background:#1b2538;color:var(--tx)}
+.bar{height:14px;background:#0e1523;border-radius:7px;position:relative;margin:6px 0 2px;overflow:visible}.bar div{height:100%;border-radius:7px}
+.mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--y)}canvas{width:100%;height:230px;display:block}
+code{background:#0e1523;padding:1px 5px;border-radius:4px}.pill{font-size:12px;padding:2px 8px;border-radius:99px;background:#1b2538;color:var(--mu)}
+</style></head><body><div class="w">
+<h1>Latent-Space Speculative Decoding</h1>
+<div class="sub">Draft the next N tokens as <b>latent vectors</b> in one pass, verify them with exact accept/reject sampling. Interactive lab · <span class="pill" id="mode">simulator mode</span></div>
+
+<div class="card" style="margin-bottom:14px"><h2>The cycle (one target forward pass per cycle)</h2>
+<div class="pipe"><span>pending token <code>y</code></span><i>→</i><span class="hl">layers 1…L (intermediate)</span><i>→</i><span class="hl">draft head: <code>h<sub>L</sub>, emb(y)</code> ⇒ N latents</span><i>→</i><span>frozen LM head ⇒ N draft tokens</span><i>→</i><span>layers L…end verify [y, d₁…d<sub>N</sub>] in parallel</span><i>→</i><span>accept/reject: <code>u &lt; p/q</code></span><i>→</i><span>emit k+1 tokens, roll back KV</span></div>
+<div class="mu" style="margin-top:8px">The same pass that verifies cycle t exposes the hidden state used to draft cycle t+1, so drafting adds no extra model pass.</div></div>
+
+<div class="grid g2">
+<div class="card"><h2>Controls</h2>
+<label>Draft length N <b id="vN"></b></label><input id="N" type="range" min="1" max="8" value="4">
+<label>First-token acceptance α₁ <b id="va1"></b></label><input id="a1" type="range" min="0.3" max="0.98" step="0.01" value="0.8">
+<label>Decay of acceptance with offset ρ <b id="vrho"></b></label><input id="rho" type="range" min="0.5" max="1" step="0.01" value="0.85">
+<label>Target pass time (memory-bound) <b id="vtp"></b></label><input id="tp" type="range" min="1" max="30" step="0.5" value="9.7">
+<label>Draft-head + verify overhead per cycle <b id="vov"></b></label><input id="ov" type="range" min="0" max="30" step="1" value="6">
+<label>Response length (tokens) <b id="vL"></b></label><input id="L" type="range" min="4" max="48" value="16">
+<label>Slow-motion factor <b id="vsm"></b></label><input id="sm" type="range" min="1" max="60" value="15">
+<div style="margin-top:12px"><button id="go">▶ Race</button><button class="s" id="rs">Re-roll</button><label style="display:inline;margin-left:8px"><input type="file" id="file" accept=".json" style="display:none"><u style="cursor:pointer" onclick="file.click()">load trace.json</u></label></div></div>
+<div class="card"><h2>Analytics</h2>
+<div class="grid g2"><div><div class="mu">E[tokens / cycle]</div><div class="big" id="etau"></div></div><div><div class="mu">Theoretical speed-up</div><div class="big ok" id="spd"></div></div>
+<div><div class="mu">Autoregressive latency</div><div class="big" id="lar"></div></div><div><div class="mu">Speculative latency</div><div class="big" id="lsp"></div></div></div>
+<div class="mu" style="margin-top:10px">Response latency vs the 50 ms budget (yellow line)</div>
+<div class="bar"><div id="b1" style="background:#64748b"></div><span class="mark" id="m1"></span></div><div class="bar"><div id="b2" style="background:var(--g)"></div><span class="mark" id="m2"></span></div>
+<div class="mu" id="verdict" style="margin-top:8px"></div></div></div>
+
+<div class="grid g2" style="margin-top:14px">
+<div class="card"><h2>Autoregressive <span class="mu" id="arc"></span></h2><div class="stream" id="sar"></div></div>
+<div class="card hl"><h2>Latent draft-and-verify <span class="mu" id="spc"></span></h2><div class="stream" id="ssp"></div>
+<div class="mu"><span class="t a">accepted draft</span> <span class="t f">bonus / corrected</span> <span class="t x">rejected</span> <span class="t p">drafting…</span></div></div></div>
+
+<div class="card" style="margin-top:14px"><h2>Speed-up vs draft length N (for three draft qualities)</h2><canvas id="cv" width="1000" height="230"></canvas></div>
+<div class="card" style="margin-top:14px"><div class="mu">Simulator mode samples accept/reject outcomes from the parametric model α<sub>k</sub> = α₁·ρ<sup>k−1</sup> using the pass times you set — it illustrates the maths, it is <b>not</b> a measurement. Run <code>scripts/benchmark.py</code> on your GPU to produce <code>docs/trace.json</code>; this page then replays your <b>measured</b> cycles and timings (or load a trace file above).</div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);let trace=null,plan=null,raf=null,seed=7;
+const TXT=" The quick brown fox jumps over the lazy dog while the sun sets slowly behind the distant hills and everyone goes home".split(/(?= )/);
+const WRONG=[" a"," of"," and"," is"," to"," in"," that"];
+function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+function P(){return{N:+$("N").value,a1:+$("a1").value,rho:+$("rho").value,tp:+$("tp").value,ov:+$("ov").value,L:+$("L").value,sm:+$("sm").value}}
+const alph=(p,k)=>p.a1*Math.pow(p.rho,k);
+function etau(p){let e=1,pr=1;for(let k=0;k<p.N;k++){pr*=alph(p,k);e+=pr}return e}
+const cyc=p=>p.tp*(1+0.03*p.N)+p.ov*p.tp/10;
+function stats(p){const t=etau(p),c=cyc(p),ar=p.L*p.tp,sp=Math.max(1,Math.ceil((p.L-1)/t))*c+p.tp;return{t,c,ar,sp,spd:ar/sp}}
+function build(){const p=P();
+ if(trace){const cs=trace.cycles;let toks=[trace.first],t=trace.ar_ms_per_token,ct=0,out=[];
+  cs.forEach(c=>{ct+=c.ms;out.push({end:ct,drafts:c.drafts,acc:c.accepted,fin:c.final});});
+  plan={cycles:out,arTok:cs.reduce((s,c)=>s+c.accepted+1,1),arMs:t,first:trace.first};return}
+ let i=0,t=0,out=[];const c=cyc(p);
+ while(i<p.L-1){let n=0;while(n<p.N&&rnd()<alph(p,n))n++;
+  const drafts=[];for(let k=0;k<p.N;k++)drafts.push(k<n?TXT[(i+1+k)%TXT.length]:WRONG[Math.floor(rnd()*WRONG.length)]);
+  t+=c;out.push({end:t,drafts,acc:n,fin:TXT[(i+1+n)%TXT.length]});i+=n+1}
+ plan={cycles:out,arTok:p.L,arMs:p.tp,first:TXT[0]}}
+const sp=(c,t)=>`<span class="t ${c}">${t.replace(/ /g,"&nbsp;")}</span>`;
+function frame(simMs){const p=P();
+ let nAR=Math.min(plan.arTok,Math.floor(simMs/plan.arMs)),h="";
+ const all=[plan.first];plan.cycles.forEach(c=>{c.drafts.slice(0,c.acc).forEach(d=>all.push(d));all.push(c.fin)});
+ for(let i=0;i<nAR;i++)h+=sp("",all[i]||"");$("sar").innerHTML=h;$("arc").textContent=Math.min(simMs,plan.arTok*plan.arMs).toFixed(0)+" ms · "+nAR+" tokens";
+ h=sp("a",plan.first);let done=1,start=0,cnt=0;
+ for(const c of plan.cycles){if(c.end<=simMs){c.drafts.forEach((d,k)=>h+=sp(k<c.acc?"a":"x",d));h+=sp("f",c.fin);done+=c.acc+1;start=c.end;cnt++}
+  else{const prog=(simMs-start)/(c.end-start);c.drafts.forEach(d=>h+=sp("p",d));break}}
+ $("ssp").innerHTML=h;$("spc").textContent=Math.min(simMs,plan.cycles.at(-1).end).toFixed(0)+" ms · "+cnt+" cycles"}
+function render(){const p=P(),s=stats(p);
+ ["N","a1","rho","tp","ov","L","sm"].forEach(k=>$("v"+(k=="tp"?"tp":k=="ov"?"ov":k=="sm"?"sm":k)).textContent=$(k).value+(k=="tp"||k=="ov"?(k=="tp"?" ms":" % of pass"):k=="sm"?"×":""));
+ $("etau").textContent=s.t.toFixed(2);$("spd").textContent=s.spd.toFixed(2)+"×";$("lar").textContent=s.ar.toFixed(0)+" ms";$("lsp").textContent=s.sp.toFixed(0)+" ms";
+ const mx=Math.max(s.ar,s.sp,50)*1.1;$("b1").style.width=100*s.ar/mx+"%";$("b2").style.width=100*s.sp/mx+"%";$("m1").style.left=$("m2").style.left=100*50/mx+"%";
+ $("verdict").innerHTML=s.sp<=50?`<span class="ok">Under 50 ms</span> for a ${p.L}-token response (autoregressive: ${s.ar.toFixed(0)} ms).`:`<span class="bad">${s.sp.toFixed(0)} ms</span> — over budget. Try fewer tokens, a faster/quantised target (lower pass time) or better acceptance.`;
+ chart()}
+function chart(){const c=$("cv"),x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);const p=P();
+ const cfg=[[0.6,"#f87171"],[0.8,"#fbbf24"],[0.92,"#34d399"]],M=34;x.strokeStyle="#243049";x.fillStyle="#8b97b0";x.font="12px system-ui";
+ let mx=4;cfg.forEach(([a])=>{for(let n=1;n<=8;n++)mx=Math.max(mx,sp2(a,n,p))});mx=Math.ceil(mx);
+ for(let g=0;g<=mx;g++){const y=H-M-(H-2*M)*g/mx;x.beginPath();x.moveTo(M,y);x.lineTo(W-10,y);x.stroke();x.fillText(g+"×",4,y+4)}
+ for(let n=1;n<=8;n++)x.fillText("N="+n,M+(W-M-20)*(n-1)/7-10,H-10);
+ cfg.forEach(([a,col])=>{x.strokeStyle=col;x.lineWidth=2.5;x.beginPath();for(let n=1;n<=8;n++){const X=M+(W-M-20)*(n-1)/7,Y=H-M-(H-2*M)*sp2(a,n,p)/mx;n==1?x.moveTo(X,Y):x.lineTo(X,Y)}x.stroke();x.fillStyle=col;x.fillText("α₁="+a,W-90,H-M-(H-2*M)*sp2(a,8,p)/mx-6)});x.lineWidth=1}
+function sp2(a,n,p){const q={...p,a1:a,N:n};return etau(q)*p.tp/cyc(q)}
+function run(){cancelAnimationFrame(raf);build();const p=P(),total=Math.max(plan.cycles.at(-1).end,plan.arTok*plan.arMs),t0=performance.now();
+ const tick=now=>{const sim=(now-t0)/p.sm;frame(sim);if(sim<total)raf=requestAnimationFrame(tick);else frame(total)};raf=requestAnimationFrame(tick)}
+["N","a1","rho","tp","ov","L","sm"].forEach(k=>$(k).addEventListener("input",()=>{render()}));
+$("go").onclick=run;$("rs").onclick=()=>{seed=(Math.random()*1e9)|0;run()};
+function useTrace(t){trace=t;$("mode").textContent="measured trace · "+(t.model||"");$("mode").style.color="var(--g)";$("N").value=t.n_draft||4;
+ const ms=t.cycles.map(c=>c.ms),cm=ms.reduce((a,b)=>a+b,0)/ms.length;$("tp").value=Math.min(30,t.ar_ms_per_token);render();run()}
+$("file").onchange=e=>{const f=e.target.files[0];if(f)f.text().then(s=>useTrace(JSON.parse(s)))};
+fetch("trace.json").then(r=>r.ok?r.json():null).then(t=>{if(t&&t.cycles)useTrace(t)}).catch(()=>{});
+render();run();
+</script></body></html>

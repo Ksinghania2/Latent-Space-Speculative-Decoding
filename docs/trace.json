@@ -1,0 +1,152 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "prompt": "The capital of France is",
+  "n_draft": 4,
+  "first": " Paris",
+  "ar_ms_per_token": 347.65374375001556,
+  "cycles": [
+    {
+      "drafts": [
+        " the",
+        " the",
+        " the",
+        " the"
+      ],
+      "accepted": 0,
+      "final": ".",
+      "ms": 1202.8629999986151
+    },
+    {
+      "drafts": [
+        " The",
+        " The",
+        " The",
+        " The"
+      ],
+      "accepted": 0,
+      "final": " It",
+      "ms": 1072.6246999984141
+    },
+    {
+      "drafts": [
+        " hole",
+        " hole",
+        " hole",
+        " hole"
+      ],
+      "accepted": 0,
+      "final": " is",
+      "ms": 559.2925000019022
+    },
+    {
+      "drafts": [
+        " in",
+        " in",
+        " in",
+        " in"
+      ],
+      "accepted": 0,
+      "final": " the",
+      "ms": 526.9905000022845
+    },
+    {
+      "drafts": [
+        " ground",
+        " ground",
+        " ground",
+        " ground"
+      ],
+      "accepted": 0,
+      "final": " largest",
+      "ms": 575.9864999999991
+    },
+    {
+      "drafts": [
+        ".",
+        ".",
+        ".",
+        "."
+      ],
+      "accepted": 0,
+      "final": " city",
+      "ms": 1019.4400999971549
+    },
+    {
+      "drafts": [
+        " over",
+        " over",
+        " over",
+        " over"
+      ],
+      "accepted": 0,
+      "final": " in",
+      "ms": 583.5899999947287
+    },
+    {
+      "drafts": [
+        " the",
+        " the",
+        " the",
+        " the"
+      ],
+      "accepted": 0,
+      "final": " Europe",
+      "ms": 618.0621000021347
+    },
+    {
+      "drafts": [
+        ".",
+        ".",
+        ".",
+        "."
+      ],
+      "accepted": 0,
+      "final": " and",
+      "ms": 564.9705999967409
+    },
+    {
+      "drafts": [
+        " the",
+        " the",
+        " the",
+        " the"
+      ],
+      "accepted": 1,
+      "final": " second",
+      "ms": 994.7744999954011
+    },
+    {
+      "drafts": [
+        " fox",
+        " fox",
+        " fox",
+        " fox"
+      ],
+      "accepted": 0,
+      "final": " largest",
+      "ms": 574.5998000056716
+    },
+    {
+      "drafts": [
+        ".",
+        ".",
+        ".",
+        "."
+      ],
+      "accepted": 0,
+      "final": " in",
+      "ms": 615.5457999993814
+    },
+    {
+      "drafts": [
+        " the",
+        " the",
+        " the",
+        " the"
+      ],
+      "accepted": 1,
+      "final": " world",
+      "ms": 914.0666000021156
+    }
+  ]
+}

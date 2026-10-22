@@ -1,0 +1,61 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B",
+  "n_draft": 4,
+  "temp": 0.0,
+  "max_new": 16,
+  "gpu": "cpu",
+  "mean_ar_ms": 9190.84015000044,
+  "mean_spec_ms": 17094.756883332593,
+  "mean_speedup": 0.5841547917356906,
+  "alpha_by_offset": [
+    0.022727272727272728,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "lossless_greedy": true,
+  "rows": [
+    {
+      "prompt": "The capital of France is",
+      "ar_ms": 5562.459900000249,
+      "spec_ms": 10285.34529999888,
+      "speedup": 0.5408141134552725,
+      "tokens_per_cycle": 1.1538461538461537
+    },
+    {
+      "prompt": "def fibonacci(n):",
+      "ar_ms": 4213.840500000515,
+      "spec_ms": 26815.714399999706,
+      "speedup": 0.1571407137301761,
+      "tokens_per_cycle": 1.0
+    },
+    {
+      "prompt": "Explain why the sky is blue in one sentence:",
+      "ar_ms": 6762.810799998988,
+      "spec_ms": 14811.151800000516,
+      "speedup": 0.4566026255972039,
+      "tokens_per_cycle": 1.0
+    },
+    {
+      "prompt": "Once upon a time, in a small village",
+      "ar_ms": 6931.945500000438,
+      "spec_ms": 14695.45289999951,
+      "speedup": 0.47170682980452205,
+      "tokens_per_cycle": 1.0
+    },
+    {
+      "prompt": "The three laws of thermodynamics are",
+      "ar_ms": 5274.365600002056,
+      "spec_ms": 19552.49300000287,
+      "speedup": 0.26975412291421264,
+      "tokens_per_cycle": 1.0
+    },
+    {
+      "prompt": "import numpy as np\n",
+      "ar_ms": 26399.618600000395,
+      "spec_ms": 16408.383899994078,
+      "speedup": 1.6089103449127566,
+      "tokens_per_cycle": 1.0
+    }
+  ]
+}

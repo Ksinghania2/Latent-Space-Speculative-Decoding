@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "latent-spec"
+version = "0.1.0"
+description = "Latent-space speculative decoding for sub-50ms edge models"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.2",
+    "transformers>=4.45",
+    "numpy",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["latentspec*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
