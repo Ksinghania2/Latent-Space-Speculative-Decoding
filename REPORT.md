@@ -73,9 +73,11 @@ Race view of autoregressive vs latent-speculative decoding (green = accepted dra
 a 50 ms budget gauge, and a speed-up-vs-N chart. In *simulator mode* outcomes are sampled from the parametric acceptance model; with `docs/trace.json` (from the benchmark) or a loaded trace file it replays **measured** cycles and timings.
 
 ## 7. Experimental protocol and what has / hasn't been run
-**Run in development:** compilation of all Python, NumPy losslessness test (§3.4), roofline calculation (§5), JS syntax check.
-**Not run (environment had no torch, GPU or network):** head training, model benchmark, pytest suite, HF cache-crop behaviour on your exact `transformers` version. Expect to tune once.
-**To reproduce:** (1) `train_head.py` 3 000 steps (batch 8×256 tokens) on WikiText-2; (2) `benchmark.py --temp 0` ⇒ must print `lossless_greedy: true`; (3) `--temp 0.7` for sampling; (4) record `mean_speedup`, per-offset α, ms/response in `results/bench.json`.
+**Validated in the current CPU environment:** the pytest suite; the NumPy losslessness simulation (§3.4); and an end-to-end greedy smoke test using the cached Qwen2.5-0.5B model and head. For a four-token request, speculative output exactly matched autoregressive output. This environment used Python 3.14.2, PyTorch 2.14.1+cpu, and Transformers 5.20.2.
+
+**Saved benchmark result (`results/bench.json`):** greedy equality was true, but mean speculative latency was 17.09 s versus 9.19 s autoregressive (0.58× speedup) on CPU; first-offset acceptance was only 2.3%. This is evidence that the current head and CPU setup do not accelerate decoding. No fresh GPU benchmark or GPU training has been validated, and no sub-50 ms result is claimed.
+
+**To reproduce and evaluate:** (1) `train_head.py` 3 000 steps (batch 8×256 tokens) on the intended hardware; (2) `benchmark.py --temp 0` ⇒ `lossless_greedy: true`; (3) run the benchmark across representative prompts and with `--temp 0.7`; (4) record `mean_speedup`, per-offset α, and response latency in `results/bench.json`. The cached CPU model smoke test does not replace this protocol.
 **Suggested ablations:** mid-layer choice (⅓, ½, ⅔ depth); N ∈ {2,4,6,8}; MSE-only vs KL-only vs both; head width; training-set domain vs eval domain; T ∈ {0, 0.7, 1.0}.
 **Success criteria:** greedy equality with baseline; mean tokens/cycle ≥ 2; wall-clock speed-up ≥ 1.8× at N=4 on a GPU; ms/response vs the 50 ms budget at your chosen length/precision.
 
@@ -83,7 +85,7 @@ a 50 ms budget gauge, and a speed-up-vs-N chart. In *simulator mode* outcomes ar
 * Acceptance depends on how predictable text is; open-ended creative text accepts less than code or boilerplate. Latent errors compound with offset (hence ρ<1).
 * Independent per-offset drafts (a chain-structured head or tree verification would improve α at higher N).
 * Verification compute grows with N+1 tokens; on weak-compute edge chips the benefit saturates earlier.
-* Top-k/top-p sampling not implemented (would be applied identically to p and q to remain lossless).
+* Top-k/top-p sampling is supported by the sampling primitives and must be applied identically to target and draft distributions to preserve the speculative-sampling guarantee.
 * Batch size 1 only; the code targets single-user edge inference.
 * Hugging Face `DynamicCache.crop` API and `hidden_states[-1]` being post-norm hold for Llama/Qwen/GPT-2 families; the trainer prints a sanity check.
 

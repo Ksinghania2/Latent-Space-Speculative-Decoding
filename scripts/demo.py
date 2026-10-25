@@ -20,6 +20,10 @@ while True:
     r = eng.generate(bb.tok(prompt, return_tensors="pt").input_ids.to(bb.device), a.max_new, record=True)
     print(bb.tok.decode(r["tokens"][:1]), end="")
     for c in r["trace"]:
-        print(G + bb.tok.decode(c["drafts"][:c["accepted"]]) + B + bb.tok.decode([c["final"]]) + R, end="", flush=True)
+        accepted = min(c["accepted"], c["emitted"])
+        print(G + bb.tok.decode(c["drafts"][:accepted]), end="", flush=True)
+        if c["emitted"] > c["accepted"]:
+            print(B + bb.tok.decode([c["final"]]), end="", flush=True)
+        print(R, end="")
     print(f"\n[{r['ms']:.1f} ms | {len(r['tokens'])} tokens | {r['cycles']} verify passes | "
           f"{(len(r['tokens'])-1)/max(1,r['cycles']):.2f} tokens/pass]")

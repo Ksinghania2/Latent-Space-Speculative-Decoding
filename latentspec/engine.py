@@ -36,6 +36,12 @@ class SpecEngine:
 
     @torch.no_grad()
     def generate(self, prompt_ids, max_new_tokens=16, eos_id=None, record=False):
+        if max_new_tokens < 0:
+            raise ValueError("max_new_tokens must be non-negative")
+        if max_new_tokens == 0:
+            return dict(tokens=[], ms=0.0, prefill_ms=0.0, cycles=0,
+                        reached=[0] * self.N, accepted=[0] * self.N,
+                        trace=[])
         bb, dev, N = self.bb, self.bb.device, self.N
         _sync(dev); t0 = time.perf_counter()
         logits, hmid, _, cache = bb.forward(prompt_ids)
@@ -45,7 +51,8 @@ class SpecEngine:
         out, trace = [int(y)], []
         reached, accepted = [0] * N, [0] * N
         prefill_ms = (time.perf_counter() - t0) * 1e3
-        while len(out) < max_new_tokens and (eos_id is None or out[-1] != eos_id):
+        while (len(out) < max_new_tokens and
+               (eos_id is None or out[-1] != eos_id)):
             tc = time.perf_counter()
             drafts, q = self._draft(h_row, y)
             logits, hmid, _, cache = bb.forward(torch.cat([y.view(1), drafts]).unsqueeze(0), cache)
@@ -57,9 +64,16 @@ class SpecEngine:
             for k in range(N):
                 reached[k] += n_i >= k
                 accepted[k] += n_i > k
+            emitted = 0
+            for token in drafts[:n_i].tolist() + [int(y_new)]:
+                if len(out) >= max_new_tokens:
+                    break
+                out.append(token)
+                emitted += 1
+                if eos_id is not None and token == eos_id:
+                    break
             trace.append(dict(drafts=drafts.tolist(), accepted=n_i, final=int(y_new),
-                              ms=(time.perf_counter() - tc) * 1e3))
-            out += drafts[:n_i].tolist() + [int(y_new)]
+                              emitted=emitted, ms=(time.perf_counter() - tc) * 1e3))
             h_row, y = hmid[0, n_i], y_new
         _sync(dev)
         return dict(tokens=out[:max_new_tokens], ms=(time.perf_counter() - t0) * 1e3,
@@ -69,6 +83,10 @@ class SpecEngine:
 
 @torch.no_grad()
 def autoregressive(bb, prompt_ids, max_new_tokens=16, temperature=0.0, eos_id=None, top_k=None, top_p=None):
+    if max_new_tokens < 0:
+        raise ValueError("max_new_tokens must be non-negative")
+    if max_new_tokens == 0:
+        return dict(tokens=[], ms=0.0)
     _sync(bb.device); t0 = time.perf_counter()
     logits, _, _, cache = bb.forward(prompt_ids)
     out = [int(sample_rows(probs_from_logits(logits[0, -1], temperature, top_k, top_p)))]

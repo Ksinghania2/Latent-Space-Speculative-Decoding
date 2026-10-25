@@ -44,7 +44,8 @@ def main():
             trace = dict(model=ck["model"], prompt=p, n_draft=N, first=d(r["tokens"][0]),
                          ar_ms_per_token=ar / a.max_new,
                          cycles=[dict(drafts=[d(t) for t in c["drafts"]], accepted=c["accepted"],
-                                      final=d(c["final"]), ms=c["ms"]) for c in r["trace"]])
+                                      final=d(c["final"]), emitted=c["emitted"], ms=c["ms"])
+                                 for c in r["trace"]])
     summary = dict(model=ck["model"], n_draft=N, temp=a.temp, max_new=a.max_new,
                    gpu=torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu",
                    mean_ar_ms=st.mean(r["ar_ms"] for r in rows), mean_spec_ms=st.mean(r["spec_ms"] for r in rows),

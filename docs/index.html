@@ -62,23 +62,23 @@ function etau(p){let e=1,pr=1;for(let k=0;k<p.N;k++){pr*=alph(p,k);e+=pr}return 
 const cyc=p=>p.tp*(1+0.03*p.N)+p.ov*p.tp/10;
 function stats(p){const t=etau(p),c=cyc(p),ar=p.L*p.tp,sp=Math.max(1,Math.ceil((p.L-1)/t))*c+p.tp;return{t,c,ar,sp,spd:ar/sp}}
 function build(){const p=P();
- if(trace){const cs=trace.cycles;let toks=[trace.first],t=trace.ar_ms_per_token,ct=0,out=[];
-  cs.forEach(c=>{ct+=c.ms;out.push({end:ct,drafts:c.drafts,acc:c.accepted,fin:c.final});});
-  plan={cycles:out,arTok:cs.reduce((s,c)=>s+c.accepted+1,1),arMs:t,first:trace.first};return}
+ if(trace){const cs=trace.cycles;let t=trace.ar_ms_per_token,ct=0,out=[];
+  cs.forEach(c=>{ct+=c.ms;out.push({end:ct,drafts:c.drafts,acc:c.accepted,fin:c.final,emitted:c.emitted??c.accepted+1});});
+  plan={cycles:out,arTok:cs.reduce((s,c)=>s+(c.emitted??c.accepted+1),1),arMs:t,first:trace.first};return}
  let i=0,t=0,out=[];const c=cyc(p);
  while(i<p.L-1){let n=0;while(n<p.N&&rnd()<alph(p,n))n++;
   const drafts=[];for(let k=0;k<p.N;k++)drafts.push(k<n?TXT[(i+1+k)%TXT.length]:WRONG[Math.floor(rnd()*WRONG.length)]);
-  t+=c;out.push({end:t,drafts,acc:n,fin:TXT[(i+1+n)%TXT.length]});i+=n+1}
+  t+=c;out.push({end:t,drafts,acc:n,fin:TXT[(i+1+n)%TXT.length],emitted:n+1});i+=n+1}
  plan={cycles:out,arTok:p.L,arMs:p.tp,first:TXT[0]}}
 const sp=(c,t)=>`<span class="t ${c}">${t.replace(/ /g,"&nbsp;")}</span>`;
-function frame(simMs){const p=P();
+function frame(simMs){const p=P(),lastEnd=plan.cycles.length?plan.cycles[plan.cycles.length-1].end:0;
  let nAR=Math.min(plan.arTok,Math.floor(simMs/plan.arMs)),h="";
- const all=[plan.first];plan.cycles.forEach(c=>{c.drafts.slice(0,c.acc).forEach(d=>all.push(d));all.push(c.fin)});
+ const all=[plan.first];plan.cycles.forEach(c=>{c.drafts.slice(0,Math.min(c.acc,c.emitted)).forEach(d=>all.push(d));if(c.emitted>c.acc)all.push(c.fin)});
  for(let i=0;i<nAR;i++)h+=sp("",all[i]||"");$("sar").innerHTML=h;$("arc").textContent=Math.min(simMs,plan.arTok*plan.arMs).toFixed(0)+" ms · "+nAR+" tokens";
  h=sp("a",plan.first);let done=1,start=0,cnt=0;
- for(const c of plan.cycles){if(c.end<=simMs){c.drafts.forEach((d,k)=>h+=sp(k<c.acc?"a":"x",d));h+=sp("f",c.fin);done+=c.acc+1;start=c.end;cnt++}
+ for(const c of plan.cycles){if(c.end<=simMs){const shown=c.emitted>c.acc?c.drafts.length:Math.min(c.acc,c.emitted);c.drafts.slice(0,shown).forEach((d,k)=>h+=sp(k<c.acc?"a":"x",d));if(c.emitted>c.acc)h+=sp("f",c.fin);done+=c.emitted;start=c.end;cnt++}
   else{const prog=(simMs-start)/(c.end-start);c.drafts.forEach(d=>h+=sp("p",d));break}}
- $("ssp").innerHTML=h;$("spc").textContent=Math.min(simMs,plan.cycles.at(-1).end).toFixed(0)+" ms · "+cnt+" cycles"}
+ $("ssp").innerHTML=h;$("spc").textContent=Math.min(simMs,lastEnd).toFixed(0)+" ms · "+cnt+" cycles"}
 function render(){const p=P(),s=stats(p);
  ["N","a1","rho","tp","ov","L","sm"].forEach(k=>$("v"+(k=="tp"?"tp":k=="ov"?"ov":k=="sm"?"sm":k)).textContent=$(k).value+(k=="tp"||k=="ov"?(k=="tp"?" ms":" % of pass"):k=="sm"?"×":""));
  $("etau").textContent=s.t.toFixed(2);$("spd").textContent=s.spd.toFixed(2)+"×";$("lar").textContent=s.ar.toFixed(0)+" ms";$("lsp").textContent=s.sp.toFixed(0)+" ms";
@@ -92,12 +92,12 @@ function chart(){const c=$("cv"),x=c.getContext("2d"),W=c.width,H=c.height;x.cle
  for(let n=1;n<=8;n++)x.fillText("N="+n,M+(W-M-20)*(n-1)/7-10,H-10);
  cfg.forEach(([a,col])=>{x.strokeStyle=col;x.lineWidth=2.5;x.beginPath();for(let n=1;n<=8;n++){const X=M+(W-M-20)*(n-1)/7,Y=H-M-(H-2*M)*sp2(a,n,p)/mx;n==1?x.moveTo(X,Y):x.lineTo(X,Y)}x.stroke();x.fillStyle=col;x.fillText("α₁="+a,W-90,H-M-(H-2*M)*sp2(a,8,p)/mx-6)});x.lineWidth=1}
 function sp2(a,n,p){const q={...p,a1:a,N:n};return etau(q)*p.tp/cyc(q)}
-function run(){cancelAnimationFrame(raf);build();const p=P(),total=Math.max(plan.cycles.at(-1).end,plan.arTok*plan.arMs),t0=performance.now();
+function run(){cancelAnimationFrame(raf);build();const p=P(),total=Math.max(plan.cycles.length?plan.cycles[plan.cycles.length-1].end:0,plan.arTok*plan.arMs),t0=performance.now();
  const tick=now=>{const sim=(now-t0)/p.sm;frame(sim);if(sim<total)raf=requestAnimationFrame(tick);else frame(total)};raf=requestAnimationFrame(tick)}
 ["N","a1","rho","tp","ov","L","sm"].forEach(k=>$(k).addEventListener("input",()=>{render()}));
 $("go").onclick=run;$("rs").onclick=()=>{seed=(Math.random()*1e9)|0;run()};
 function useTrace(t){trace=t;$("mode").textContent="measured trace · "+(t.model||"");$("mode").style.color="var(--g)";$("N").value=t.n_draft||4;
- const ms=t.cycles.map(c=>c.ms),cm=ms.reduce((a,b)=>a+b,0)/ms.length;$("tp").value=Math.min(30,t.ar_ms_per_token);render();run()}
+ const ms=t.cycles.map(c=>c.ms),cm=ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:0;$("tp").value=Math.min(30,t.ar_ms_per_token||cm||1);render();run()}
 $("file").onchange=e=>{const f=e.target.files[0];if(f)f.text().then(s=>useTrace(JSON.parse(s)))};
 fetch("trace.json").then(r=>r.ok?r.json():null).then(t=>{if(t&&t.cycles)useTrace(t)}).catch(()=>{});
 render();run();

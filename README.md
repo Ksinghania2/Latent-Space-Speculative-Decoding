@@ -29,5 +29,6 @@ pytest -q
 4. Commit your own `docs/trace.json` (from `benchmark.py`) and the page switches from simulator to **measured trace** automatically.
 
 ## Status
-Verified in development: Python compiles, the accept/reject maths passes the Monte-Carlo test, JS syntax checks. **Not yet run:** the
-PyTorch/HF path (training, benchmark) needs a machine with `torch` + model weights; no latency numbers are claimed until you run it.
+The sampling tests and NumPy losslessness simulation pass. The cached Qwen2.5-0.5B checkpoint and draft head also completed an end-to-end greedy smoke test: speculative output matched autoregressive output for the same four-token request on CPU. The saved benchmark in `results/bench.json` reports greedy equality, but only **0.58× mean speedup** on CPU (speculation was slower); this does not establish an acceleration or the sub-50 ms target.
+
+This is a research prototype, not production-ready software. Training and a fresh full benchmark have not been validated on a GPU, and the stored CPU benchmark is not a substitute for target-hardware measurements. Run the training and benchmark steps above on the intended device before making performance claims.
